@@ -27,6 +27,10 @@ class OralImage:
     def uuid(self) -> str:
         return self.__uuid
 
+    @property
+    def path(self) -> str:
+        return self.__path
+
         
 
     
