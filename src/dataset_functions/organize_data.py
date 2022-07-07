@@ -1,9 +1,8 @@
+from glob import glob
 import pathlib
 import shutil
 
-from typing import Tuple
 import unidecode
-from difflib import SequenceMatcher
 
 import pandas as pd
 import numpy as np
@@ -14,48 +13,73 @@ from src.dataset_functions.const import CLASSES_EN, CLASSES_PT, CLASSES_DICTIONA
 from src.utils.compare_strings import *
 
 def get_english_class(folder:str) -> tuple[bool, str]:
-    # Corrects accents letters
+    '''
+    The original data contains folders with names in Portuguese. This function tries to find 
+    the correct English name for the folder.
+    '''
+    # Corrects accents letters and replaces spaces with underscores
     class_name = unidecode.unidecode(folder.split("\\")[-1]).replace(" ", "_").lower()
     found = False
     
+    # The class name doesn't exist in the known classes or is mistyped
     if class_name not in CLASSES_PT:
-
+        class_name = class_name
+        best_ratio = 0
         for class_ in CLASSES_PT:
-            if similar(class_name, class_, 0.85):
+            # Checks which class is the most similar
+            if similar(class_name, class_, 0.85) > best_ratio:
+                best_ratio = similar(class_name, class_, 0.85)
                 class_name = class_
                 found = True
-                break
-        
+                
+        # If no classes were found, returns the original name
         if not found:
-            print(class_name)
             return (False, class_name)
-        
     else:
         found = True
     
+    # If the class name is found, returns the correct name
     class_name = CLASSES_EN[CLASSES_PT.index(class_name)]        
     return (found, class_name)
     
 def choose_class_name(value:str) -> str:
+    '''
+    Function used to choose the class name.
+    '''
     print(f'Class name: {value}')
     print("Values:")
     print(*CLASSES_EN, sep=" | ")
     return str(input("Type in correct class: "))
 
 def get_class(folder):
+    '''
+    Function used to get the class name.
+    '''
     classes = get_english_class(folder)
+
+    # currently, using the class_name independent if it was found or not
     return classes[1]       
         
 def save_image(image_name:str, class_name:str, origin_path, destiny_path:str) -> None:
-    if not pathlib.Path(f"{destiny_path}/{class_name}").exists():
-        pathlib.Path(f"{destiny_path}/{class_name}").mkdir(parents=True)
+    '''
+    Copies image from original path to class folder. 
+    '''
+    class_path = destiny_path / class_name
+    if not pathlib.Path(class_path).exists():
+        pathlib.Path(class_path).mkdir(parents=True)
         print("Folder created:", class_name)  
 
-    if not pathlib.Path(f"{destiny_path}/{class_name}/{image_name}").exists():
-        shutil.copy(origin_path, f"{destiny_path}/{class_name}/{image_name}")
+    full_destiny_path = class_path / image_name
+    if not pathlib.Path(full_destiny_path).exists():
+        shutil.copy(origin_path, full_destiny_path)
         print("Image copied:", image_name)
 
 def iterate_images(origin_path:pathlib.PosixPath, destiny_path:pathlib.PosixPath) -> None:
+    '''
+    Saves images in the correct class folder. If the directory visited has files, than the
+    class_name is the directory name. If the directory visited has subdirectories, than the
+    function calls itself recursively and checks it's child files and subdirectories.
+    '''
     # Iterates over folder
     for folder in origin_path.iterdir():
         if folder.is_dir():
@@ -67,7 +91,9 @@ def iterate_images(origin_path:pathlib.PosixPath, destiny_path:pathlib.PosixPath
             
 def calculate_amount_of_images(path:pathlib.PosixPath) -> pd.DataFrame:
     """
-    Calculates amount of images in a folder.
+    Calculates amount of images in a folder and returns a DataFrame with the
+    columns *class* (for directory name) and *amount* for the amount of images
+    in said class.
     """
     df = pd.DataFrame(columns=["class", "amount"])
     for folder in path.iterdir():
@@ -94,20 +120,35 @@ def create_X_y(path:pathlib.PosixPath) -> Tuple[np.ndarray, np.ndarray]:
 
     return np.array(X), np.array(y)
 
-def divide_train_test(path:pathlib.PosixPath) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+def divide_train_test(path:pathlib.PosixPath) -> tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+    """
+    Divides the data into train and test sets. Returns X_train, y_train), (X_test, y_test)
+    """
     X_data, y_data = create_X_y(pathlib.Path(path))
     X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, test_size=0.1, random_state=42, stratify=y_data)
     return (X_train, y_train), (X_test, y_test)
 
 def main_count_images() -> None:
+    '''
+    Counts the amount of images in each class and logs information into a csv.
+    '''
     destiny_path = pathlib.Path('/home/bea/oral_cancer_analysis/data_divided').resolve()
     df = calculate_amount_of_images(destiny_path)
     df = df.sort_values(by=["amount"], ascending=False)
     df.to_csv("/home/bea/oral_cancer_analysis/data_divided/amount_of_images.csv", index=False)
 
 def main_divide_images() -> None:
+    '''
+    Organizes initial data unorganized data strucutre into datset divided by classes.
+    Initial data structure includes folders by pacient hash, with a possible unknown 
+    amount of nested subdirectories and images inside subdirectories. The output is a
+    dataset that has only 1 level of subdirectories and images inside said subdirectories.
+    Ex.:
+    /root
+        /class_name
+                  /image_name.png
+    '''
     origin_path = pathlib.Path('/home/bea/oral_cancer_analysis/data_old').resolve()
-    print(type(origin_path))
     destiny_path = pathlib.Path('/home/bea/oral_cancer_analysis/data_divided').resolve()
 
     if not destiny_path.exists():
@@ -116,7 +157,9 @@ def main_divide_images() -> None:
     iterate_images(origin_path, destiny_path)
 
 def main_count_train_test():
-    # main_divide_images()
+    '''
+    Saves to disk the train and test sets.
+    '''
     path = '/home/bea/oral_cancer_analysis/data_divided'
     (X_train, y_train), (X_test, y_test) = divide_train_test(path)
     
