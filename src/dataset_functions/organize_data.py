@@ -10,7 +10,7 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 
-from src.dataset_functions.const import CLASSES_EN, CLASSES_PT, CLASSES_DICTIONARY
+from src.dataset_functions.const import CLASSES_EN, CLASSES_PT, CLASSES_DICTIONARY, REVERSE_CLASSES_DICTIONARY
 from src.utils.compare_strings import *
 
 def get_english_class(folder:str) -> tuple[bool, str]:
@@ -119,10 +119,35 @@ def main_count_train_test():
     # main_divide_images()
     path = '/home/bea/oral_cancer_analysis/data_divided'
     (X_train, y_train), (X_test, y_test) = divide_train_test(path)
-    print(X_train.shape, y_train.shape)
-    print(np.unique(y_train, return_counts=True))
-    print(X_test.shape, y_test.shape)
-    print(np.unique(y_test, return_counts=True))
+    
+    output_path = pathlib.Path('/home/bea/oral_cancer_analysis/data').resolve()
+    train_path = output_path / "train"
+    test_path = output_path / "test"
+    
+    if not output_path.exists():
+        output_path.mkdir()
+    if not train_path.exists():
+        train_path.mkdir()
+    if not test_path.exists():
+        test_path.mkdir()
+
+    for (x, y) in zip(X_train, y_train):
+        class_path = train_path / REVERSE_CLASSES_DICTIONARY[y]
+        if not class_path.exists():
+            class_path.mkdir()
+        
+        if not pathlib.Path(f"{class_path}/{x.name}").exists():
+            shutil.copy(x, f"{class_path}/{x.name}")
+            print(f"Image copied: {x.name}")
+
+    for (x, y) in zip(X_test, y_test):
+        class_path = test_path / REVERSE_CLASSES_DICTIONARY[y]
+        if not class_path.exists():
+            class_path.mkdir()
+        
+        if not pathlib.Path(f"{class_path}/{x.name}").exists():
+            shutil.copy(x, f"{class_path}/{x.name}")
+            print(f"Image copied: {x.name}")
 
 if __name__ == "__main__":
     main_count_train_test()
