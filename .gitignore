@@ -112,3 +112,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Data files
+data_divided/
+data_old/
+data/
