@@ -41,8 +41,8 @@ ROOT_PATH = "data_old"
 # Classes dictionary
 CLASSES_DICTIONARY = {'with_dysplasia': 0, 
                       'no_dysplasia': 1, 
-                      'connective_tissue': 2}
+                      'carcinoma': 2}
 
 REVERSE_CLASSES_DICTIONARY = {0: 'with_dysplasia',
                               1: 'no_dysplasia',
-                              2: 'connective_tissue'}
+                              2: 'carcinoma'}
