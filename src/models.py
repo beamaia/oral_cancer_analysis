@@ -8,9 +8,6 @@ from torchvision.models.mobilenet import mobilenet_v2
 from efficientnet_pytorch import EfficientNet
 import learn2learn as l2l
 
-import timm
-
-
 # Embedding ConvNet (from learn2learn)
 class Convnet(nn.Module):
 
