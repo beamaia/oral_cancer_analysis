@@ -118,3 +118,6 @@ data_divided/
 data_old/
 data/
 *.zip*
+
+# other files
+*protonet*
