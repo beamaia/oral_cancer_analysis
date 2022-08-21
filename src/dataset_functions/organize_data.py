@@ -9,7 +9,7 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 
-from src.dataset_functions.const import CLASSES_EN, CLASSES_PT, CLASSES_DICTIONARY, REVERSE_CLASSES_DICTIONARY
+from src.const import CLASSES_EN, CLASSES_PT, CLASSES_DICTIONARY, REVERSE_CLASSES_DICTIONARY
 from src.utils.compare_strings import *
 
 def get_english_class(folder:str) -> tuple[bool, str]:
@@ -72,7 +72,7 @@ def save_image(image_name:str, class_name:str, origin_path, destiny_path:str) ->
     full_destiny_path = class_path / image_name
     if not pathlib.Path(full_destiny_path).exists():
         shutil.copy(origin_path, full_destiny_path)
-        print("Image copied:", image_name)
+        # print("Image copied:", image_name)
 
 def iterate_images(origin_path:pathlib.PosixPath, destiny_path:pathlib.PosixPath) -> None:
     '''
@@ -87,8 +87,10 @@ def iterate_images(origin_path:pathlib.PosixPath, destiny_path:pathlib.PosixPath
         elif folder.is_file():
             folder_name = folder.parts[-2]
             folder_name_corrected = get_class(folder_name)
-            save_image(folder.name, folder_name_corrected, folder, destiny_path)
-            
+            # save_image(folder.name, folder_name_corrected, folder, destiny_path)
+            save_image(folder.name, folder_name, folder, destiny_path)
+
+
 def calculate_amount_of_images(path:pathlib.PosixPath) -> pd.DataFrame:
     """
     Calculates amount of images in a folder and returns a DataFrame with the
@@ -103,7 +105,7 @@ def calculate_amount_of_images(path:pathlib.PosixPath) -> pd.DataFrame:
     
     return df
 
-def create_X_y(path:pathlib.PosixPath) -> Tuple[np.ndarray, np.ndarray]:
+def create_X_y(path:pathlib.PosixPath) -> tuple[np.ndarray, np.ndarray]:
     """
     Creates X and y arrays.
     """
@@ -120,11 +122,10 @@ def create_X_y(path:pathlib.PosixPath) -> Tuple[np.ndarray, np.ndarray]:
 
     return np.array(X), np.array(y)
 
-def divide_train_test(path:pathlib.PosixPath) -> tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+def divide_train_test(X_data:np.array, y_data:np.array) -> tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
     """
     Divides the data into train and test sets. Returns X_train, y_train), (X_test, y_test)
     """
-    X_data, y_data = create_X_y(pathlib.Path(path))
     X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, test_size=0.1, random_state=42, stratify=y_data)
     return (X_train, y_train), (X_test, y_test)
 
@@ -132,10 +133,14 @@ def main_count_images() -> None:
     '''
     Counts the amount of images in each class and logs information into a csv.
     '''
-    destiny_path = pathlib.Path('/home/bea/oral_cancer_analysis/data_divided').resolve()
-    df = calculate_amount_of_images(destiny_path)
-    df = df.sort_values(by=["amount"], ascending=False)
-    df.to_csv("/home/bea/oral_cancer_analysis/data_divided/amount_of_images.csv", index=False)
+    destiny_path = pathlib.Path('/home/bea/oral_cancer_analysis/drop_box_data_divided').resolve() 
+    
+    for folder in destiny_path.iterdir():
+        if folder.is_dir(): 
+            
+            df = calculate_amount_of_images(folder)
+            df = df.sort_values(by=["amount"], ascending=False)
+            df.to_csv(f"{destiny_path}/{folder.name}/amount_of_images_{folder.name}.csv", index=False)
 
 def main_divide_images() -> None:
     '''
@@ -148,20 +153,41 @@ def main_divide_images() -> None:
         /class_name
                   /image_name.png
     '''
-    origin_path = pathlib.Path('/home/bea/oral_cancer_analysis/data_old').resolve()
-    destiny_path = pathlib.Path('/home/bea/oral_cancer_analysis/data_divided').resolve()
+    origin_path = pathlib.Path('/home/bea/oral_cancer_analysis/Dropbox').resolve()
+    destiny_path = pathlib.Path('/home/bea/oral_cancer_analysis/drop_box_data_divided').resolve()
 
     if not destiny_path.exists():
+        print('hi')
         destiny_path.mkdir()
 
-    iterate_images(origin_path, destiny_path)
+    for folder in origin_path.iterdir():
+        if folder.is_dir():
+            destiny_path_aux = pathlib.Path(destiny_path / folder.name)
 
-def main_count_train_test():
+            if not destiny_path_aux.exists():
+                destiny_path_aux.mkdir()
+                print("Folder created:", destiny_path_aux)
+            else:
+                print(destiny_path_aux)
+                continue
+            iterate_images(folder, destiny_path_aux)
+
+def main_train_test():
     '''
     Saves to disk the train and test sets.
     '''
-    path = '/home/bea/oral_cancer_analysis/data_divided'
-    (X_train, y_train), (X_test, y_test) = divide_train_test(path)
+    path = pathlib.Path('data_divided').resolve()
+
+    X_data = np.array([])
+    y_data = np.array([])
+
+    for folder in path.iterdir():
+        if folder.is_dir():
+            X_data_aux, y_data_aux = create_X_y(folder)
+            X_data = np.append(X_data, X_data_aux)
+            y_data = np.append(y_data, y_data_aux)
+
+    X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, test_size=0.1, random_state=42, stratify=y_data)
     
     output_path = pathlib.Path('/home/bea/oral_cancer_analysis/data').resolve()
     train_path = output_path / "train"
@@ -191,6 +217,40 @@ def main_count_train_test():
         if not pathlib.Path(f"{class_path}/{x.name}").exists():
             shutil.copy(x, f"{class_path}/{x.name}")
             print(f"Image copied: {x.name}")
+    
+    print("Train set:", len(X_train))
+    print("Test set:", len(X_test))
+
+
+def main_count_train_test():
+    output_path = pathlib.Path('/home/bea/oral_cancer_analysis/data').resolve()
+    train_path = output_path / "train"
+    test_path = output_path / "test"
+
+    df = pd.DataFrame(columns=["class", 'set', "amount"])
+
+    count = 0
+    for folder in train_path.iterdir():
+        if folder.is_dir():
+            df_aux = pd.DataFrame({"class": folder.name, 
+                                   "set": "train", 
+                                   "amount": len(glob(f"{folder}/*"))}, index=[count])
+            df = df.append(df_aux)
+            count += 1
+
+    for folder in test_path.iterdir():
+        if folder.is_dir():
+            df_aux = pd.DataFrame({"class": folder.name, 
+                                   "set": "test", 
+                                   "amount": len(glob(f"{folder}/*"))}, index=[count])
+            df = df.append(df_aux)
+            count += 1
+    
+    df = df.sort_values(by=["class", "set"], ascending=True)
+    df.to_csv("/home/bea/oral_cancer_analysis/data/amount_of_images.csv", index=False)
 
 if __name__ == "__main__":
+    # main_divide_images()
+    # main_count_images()
+    # main_train_test()
     main_count_train_test()
