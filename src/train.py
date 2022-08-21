@@ -1,8 +1,7 @@
-import time
 import torch
 import numpy as np
 
-from logger.log import Log
+from src.logger.log import Log
 
 class TrainSetup:
     def __init__(self, model, optimizer, criterion, scheduler, device, name='model', path='models'):  
@@ -73,15 +72,11 @@ class TrainSetup:
         self.log.save_model(epoch, self.path)
         torch.save(self.model.state_dict(), self.path)
 
-        results = self.test()
-        
-        return results
 
     def test(self, test_loader):
         self.test_loader = test_loader
 
-        results_dict = {'name': self.name, 
-                        'predicted': np.array([], dtype=int), 
+        results_dict = {'predicted': np.array([], dtype=int), 
                         'real': np.array([], dtype=int)}
 
         self.model.eval()
